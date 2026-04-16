@@ -1,0 +1,39 @@
+# detection.yaml – Person detector node parameters
+# For hotel_luggage_robot/scripts/person_detector.py
+
+person_detector:
+  ros__parameters:
+    # YOLOv8 model (n=nano, s=small, m=medium, l=large, x=xlarge)
+    yolo_model: "yolov8n.pt"          # lightweight for embedded CPU
+    yolo_confidence: 0.45
+    yolo_device: "cpu"                # set to "cuda:0" if GPU is available
+    yolo_imgsz: 416
+    max_detection_fps: 5.0
+    debug_publish_fps: 5.0
+
+    # Sensor topics
+    camera_topic:       "/rotav/front_cam/image_raw"
+    camera_info_topic:  "/rotav/front_cam/camera_info"
+    lidar_topic:        "/rotav/scan"
+
+    # TF frames
+    map_frame:          "map"
+    camera_frame:       "camera_optical"
+    robot_frame:        "base_footprint"
+    lidar_frame:        "lidar_link"
+
+    # Safety parameters
+    person_radius_m:    0.8       # virtual obstacle radius around each person
+    person_cost:        253       # HIGH (253 = navigable around but not through)
+    close_person_range_m: 1.6
+    close_bbox_margin_px: 72
+    close_track_timeout_s: 0.8
+    close_scan_width_scale: 1.9
+    close_scan_range_padding_m: 0.25
+    close_match_distance_m: 1.6
+
+    # Virtual layer namespace (matches global_costmap config in hotel_nav2.yaml)
+    virtual_layer_ns:   "/global_costmap/virtual_layer"
+
+    # Debug
+    publish_debug_image: true

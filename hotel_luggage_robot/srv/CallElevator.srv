@@ -1,0 +1,13 @@
+# Request elevator service
+# current_floor: floor the robot is currently on  (e.g. "floor_1")
+# target_floor:  floor the robot needs to reach   (e.g. "floor_3")
+string current_floor
+string target_floor
+---
+# success:        true if elevator was called and doors opened
+# elevator_id:    which elevator was dispatched
+# wait_time_sec:  estimated wait time in seconds
+bool success
+string elevator_id
+float32 wait_time_sec
+string message

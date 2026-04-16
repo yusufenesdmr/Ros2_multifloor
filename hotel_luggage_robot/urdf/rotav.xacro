@@ -1,0 +1,318 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="rotav">
+
+  <!--
+    ROTA-V v3 — 4 Tekerlekli Skid-Steer
+    Tüm 4 tekerlek aktif, caster yok
+    Denge mükemmel, zemine takılma yok
+  -->
+
+  <!-- ═══ SABİTLER ═══════════════════════════════════════════════ -->
+  <xacro:property name="base_l"  value="0.55"/>
+  <xacro:property name="base_w"  value="0.38"/>
+  <xacro:property name="base_h"  value="0.18"/>
+  <xacro:property name="base_m"  value="0.6"/>
+
+  <xacro:property name="wr"   value="0.075"/>  <!-- tekerlek yarıçap -->
+  <xacro:property name="ww"   value="0.045"/>  <!-- tekerlek genişlik -->
+  <xacro:property name="wm"   value="0.05"/>   <!-- tekerlek kütle -->
+  <xacro:property name="wx"   value="0.15"/>   <!-- ön/arka X ofseti -->
+  <xacro:property name="wy"   value="0.22"/>   <!-- sol/sağ Y ofseti -->
+
+  <xacro:property name="pole_r"  value="0.022"/>
+  <xacro:property name="pole_h"  value="0.22"/>
+  <xacro:property name="lid_r"   value="0.045"/>
+  <xacro:property name="lid_h"   value="0.055"/>
+  <xacro:property name="cam_l"   value="0.04"/>
+  <xacro:property name="cam_w"   value="0.10"/>
+  <xacro:property name="cam_h"   value="0.04"/>
+
+  <!-- ═══ İNERTİA MAKROLARI ══════════════════════════════════════ -->
+  <xacro:macro name="box_i" params="m l w h">
+    <inertial>
+      <mass value="${m}"/>
+      <inertia ixx="${m*(w*w+h*h)/12}" ixy="0" ixz="0"
+               iyy="${m*(l*l+h*h)/12}" iyz="0"
+               izz="${m*(l*l+w*w)/12}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="cyl_i" params="m r h">
+    <inertial>
+      <mass value="${m}"/>
+      <inertia ixx="${m*(3*r*r+h*h)/12}" ixy="0" ixz="0"
+               iyy="${m*(3*r*r+h*h)/12}" iyz="0"
+               izz="${m*r*r/2}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- ═══ BASE FOOTPRINT ═════════════════════════════════════════ -->
+  <link name="base_footprint"/>
+  <joint name="base_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child  link="base_link"/>
+    <origin xyz="0 0 ${wr}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ═══ ANA GÖVDE ══════════════════════════════════════════════ -->
+  <link name="base_link">
+    <visual>
+      <geometry><box size="${base_l} ${base_w} ${base_h}"/></geometry>
+      <material name="white"><color rgba="0.95 0.95 0.95 1"/></material>
+    </visual>
+    <collision>
+      <geometry><box size="${base_l} ${base_w} ${base_h}"/></geometry>
+    </collision>
+    <xacro:box_i m="${base_m}" l="${base_l}" w="${base_w}" h="${base_h}"/>
+  </link>
+
+  <!-- Mavi ön şerit -->
+  <link name="front_bar">
+    <visual>
+      <geometry><box size="0.012 ${base_w} 0.04"/></geometry>
+      <material name="blue"><color rgba="0.1 0.35 0.85 1"/></material>
+    </visual>
+    <collision><geometry><box size="0.012 ${base_w} 0.04"/></geometry></collision>
+    <inertial><mass value="0.005"/>
+      <inertia ixx="1e-7" ixy="0" ixz="0" iyy="1e-7" iyz="0" izz="1e-7"/>
+    </inertial>
+  </link>
+  <joint name="front_bar_j" type="fixed">
+    <parent link="base_link"/><child link="front_bar"/>
+    <origin xyz="${base_l/2} 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Tepsi -->
+  <link name="tray">
+    <visual>
+      <geometry><box size="0.48 0.32 0.03"/></geometry>
+      <material name="blue2"><color rgba="0.1 0.35 0.85 1"/></material>
+    </visual>
+    <collision><geometry><box size="0.48 0.32 0.03"/></geometry></collision>
+    <xacro:box_i m="0.03" l="0.48" w="0.32" h="0.03"/>
+  </link>
+  <joint name="tray_j" type="fixed">
+    <parent link="base_link"/><child link="tray"/>
+    <origin xyz="0 0 ${base_h/2+0.015}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ═══ 4 AKTİF TEKERLEK ════════════════════════════════════════
+       front_left  / front_right
+       rear_left   / rear_right
+  ══════════════════════════════════════════════════════════════ -->
+  <xacro:macro name="wheel" params="name xpos yside">
+    <link name="${name}_wheel">
+      <visual>
+        <origin rpy="${pi/2} 0 0"/>
+        <geometry><cylinder radius="${wr}" length="${ww}"/></geometry>
+        <material name="dark"><color rgba="0.1 0.1 0.1 1"/></material>
+      </visual>
+      <collision>
+        <origin rpy="${pi/2} 0 0"/>
+        <geometry><cylinder radius="${wr}" length="${ww}"/></geometry>
+      </collision>
+      <xacro:cyl_i m="${wm}" r="${wr}" h="${ww}"/>
+    </link>
+    <joint name="${name}_wheel_j" type="continuous">
+      <parent link="base_link"/>
+      <child  link="${name}_wheel"/>
+      <origin xyz="${xpos} ${yside*wy} ${-base_h/2}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <dynamics damping="0.01" friction="0.01"/>
+      <limit effort="2.0" velocity="8.0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:wheel name="front_left"   xpos=" ${wx}" yside=" 1"/>
+  <xacro:wheel name="front_right"  xpos=" ${wx}" yside="-1"/>
+  <xacro:wheel name="rear_left"    xpos="-${wx}" yside=" 1"/>
+  <xacro:wheel name="rear_right"   xpos="-${wx}" yside="-1"/>
+
+  <!-- ═══ LİDAR DİREĞİ + LİDAR ══════════════════════════════════ -->
+  <link name="lidar_pole">
+    <visual>
+      <geometry><cylinder radius="${pole_r}" length="${pole_h}"/></geometry>
+      <material name="dgrey"><color rgba="0.25 0.25 0.25 1"/></material>
+    </visual>
+    <collision><geometry><cylinder radius="${pole_r}" length="${pole_h}"/></geometry></collision>
+    <xacro:cyl_i m="0.02" r="${pole_r}" h="${pole_h}"/>
+  </link>
+  <joint name="lidar_pole_j" type="fixed">
+    <parent link="tray"/><child link="lidar_pole"/>
+    <origin xyz="0 0 ${0.015+pole_h/2}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="lidar_link">
+    <visual>
+      <geometry><cylinder radius="${lid_r}" length="${lid_h}"/></geometry>
+      <material name="dgrey2"><color rgba="0.15 0.15 0.15 1"/></material>
+    </visual>
+    <collision><geometry><cylinder radius="${lid_r}" length="${lid_h}"/></geometry></collision>
+    <xacro:cyl_i m="0.015" r="${lid_r}" h="${lid_h}"/>
+  </link>
+  <joint name="lidar_j" type="fixed">
+    <parent link="lidar_pole"/><child link="lidar_link"/>
+    <origin xyz="0 0 ${pole_h/2+lid_h/2}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ═══ MONOKüLER KAMERA ════════════════════════════════════════ -->
+  <link name="camera_link">
+    <visual>
+      <geometry><box size="${cam_l} ${cam_w} ${cam_h}"/></geometry>
+      <material name="cam_col"><color rgba="0.15 0.15 0.15 1"/></material>
+    </visual>
+    <collision><geometry><box size="${cam_l} ${cam_w} ${cam_h}"/></geometry></collision>
+    <xacro:box_i m="0.015" l="${cam_l}" w="${cam_w}" h="${cam_h}"/>
+  </link>
+  <joint name="camera_j" type="fixed">
+    <parent link="base_link"/><child link="camera_link"/>
+    <origin xyz="${base_l/2+cam_l/2} 0 ${base_h/4}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="camera_optical"/>
+  <joint name="camera_optical_j" type="fixed">
+    <parent link="camera_link"/><child link="camera_optical"/>
+    <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+  </joint>
+
+  <!-- ═══ GAZEBO MALZEMELERİ ══════════════════════════════════════ -->
+  <gazebo reference="base_link">   <material>Gazebo/White</material></gazebo>
+  <gazebo reference="front_bar">   <material>Gazebo/Blue</material></gazebo>
+  <gazebo reference="tray">        <material>Gazebo/Blue</material></gazebo>
+  <gazebo reference="lidar_pole">  <material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="lidar_link">  <material>Gazebo/DarkGrey</material></gazebo>
+  <gazebo reference="camera_link"> <material>Gazebo/DarkGrey</material></gazebo>
+
+  <!-- 4 tekerlek aynı fizik ayarı -->
+  <xacro:macro name="wheel_gazebo" params="name">
+    <gazebo reference="${name}_wheel">
+      <material>Gazebo/Black</material>
+      <mu1>0.9</mu1>
+      <mu2>0.9</mu2>
+      <kp>1e6</kp>
+      <kd>10.0</kd>
+      <minDepth>0.001</minDepth>
+      <maxVel>0.1</maxVel>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:wheel_gazebo name="front_left"/>
+  <xacro:wheel_gazebo name="front_right"/>
+  <xacro:wheel_gazebo name="rear_left"/>
+  <xacro:wheel_gazebo name="rear_right"/>
+
+  <!-- ═══ PLUGİN 1a — ARKA TEKERLEKLER (odom + tf yayar) ════════ -->
+  <gazebo>
+    <plugin name="rotav_rear_drive" filename="libgazebo_ros_diff_drive.so">
+      <ros>
+        <namespace>/rotav</namespace>
+        <remapping>cmd_vel:=cmd_vel</remapping>
+        <remapping>odom:=odom</remapping>
+      </ros>
+      <left_joint>rear_left_wheel_j</left_joint>
+      <right_joint>rear_right_wheel_j</right_joint>
+      <wheel_separation>${2.0*wy}</wheel_separation>
+      <wheel_diameter>${2.0*wr}</wheel_diameter>
+      <max_wheel_torque>1.5</max_wheel_torque>
+      <max_wheel_acceleration>1.0</max_wheel_acceleration>
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>true</publish_odom_tf>
+      <publish_wheel_tf>false</publish_wheel_tf>
+      <update_rate>50</update_rate>
+    </plugin>
+  </gazebo>
+
+  <!-- ═══ PLUGİN 1b — ÖN TEKERLEKLER (sadece hareket, odom yok) ═ -->
+  <gazebo>
+    <plugin name="rotav_front_drive" filename="libgazebo_ros_diff_drive.so">
+      <ros>
+        <namespace>/rotav</namespace>
+        <remapping>cmd_vel:=cmd_vel</remapping>
+        <remapping>odom:=odom_front</remapping>
+      </ros>
+      <left_joint>front_left_wheel_j</left_joint>
+      <right_joint>front_right_wheel_j</right_joint>
+      <wheel_separation>${2.0*wy}</wheel_separation>
+      <wheel_diameter>${2.0*wr}</wheel_diameter>
+      <max_wheel_torque>1.5</max_wheel_torque>
+      <max_wheel_acceleration>1.0</max_wheel_acceleration>
+      <odometry_frame>odom</odometry_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+      <publish_odom>false</publish_odom>
+      <publish_odom_tf>false</publish_odom_tf>
+      <publish_wheel_tf>false</publish_wheel_tf>
+      <update_rate>50</update_rate>
+    </plugin>
+  </gazebo>
+
+  <!-- ═══ PLUGİN 2 — 2D LİDAR ════════════════════════════════════ -->
+  <gazebo reference="lidar_link">
+    <sensor type="ray" name="rotav_lidar">
+      <pose>0 0 0 0 0 0</pose>
+      <visualize>false</visualize>
+      <update_rate>10</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>720</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.14159265</min_angle>
+            <max_angle> 3.14159265</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.15</min>
+          <max>12.0</max>
+          <resolution>0.01</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.008</stddev>
+        </noise>
+      </ray>
+      <plugin name="rotav_lidar_plugin" filename="libgazebo_ros_ray_sensor.so">
+        <ros>
+          <namespace>/rotav</namespace>
+          <remapping>~/out:=scan</remapping>
+        </ros>
+        <output_type>sensor_msgs/LaserScan</output_type>
+        <frame_name>lidar_link</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- ═══ PLUGİN 3 — MONOKüLER KAMERA ═══════════════════════════ -->
+  <gazebo reference="camera_link">
+    <sensor type="camera" name="rotav_camera">
+      <update_rate>30.0</update_rate>
+      <visualize>false</visualize>
+      <camera name="front_cam">
+        <horizontal_fov>1.2217</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip><near>0.05</near><far>50.0</far></clip>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.005</stddev>
+        </noise>
+      </camera>
+      <plugin name="rotav_camera_plugin" filename="libgazebo_ros_camera.so">
+        <ros>
+          <namespace>/rotav</namespace>
+          <remapping>image_raw:=camera/image_raw</remapping>
+          <remapping>camera_info:=camera/camera_info</remapping>
+        </ros>
+        <camera_name>front_cam</camera_name>
+        <frame_name>camera_optical</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+</robot>

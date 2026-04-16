@@ -1,0 +1,8 @@
+build/
+install/
+log/
+.ros_logs/
+.codex
+*.pyc
+__pycache__/
+yolov8n.pt

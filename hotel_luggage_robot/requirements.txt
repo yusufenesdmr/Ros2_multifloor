@@ -1,0 +1,13 @@
+# Python dependencies for hotel_luggage_robot
+# Install with: pip install -r requirements.txt
+
+# YOLOv8 object detection (person detector node)
+ultralytics>=8.0.0
+
+# Image processing
+opencv-python-headless>=4.8.0
+
+# Numerical computing
+numpy>=1.24.0
+
+# SQLite is part of Python stdlib – no pip install needed

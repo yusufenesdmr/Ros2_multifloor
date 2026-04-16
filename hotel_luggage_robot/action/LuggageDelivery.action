@@ -1,0 +1,56 @@
+# ─── GOAL ────────────────────────────────────────────────────────────────────
+# Unique delivery task identifier
+string task_id
+
+# Luggage pickup location
+string pickup_floor          # e.g. "floor_1"
+float64 pickup_x
+float64 pickup_y
+float64 pickup_yaw           # orientation at pickup point (radians)
+
+# Luggage drop-off location
+string dropoff_floor         # e.g. "floor_3"
+float64 dropoff_x
+float64 dropoff_y
+float64 dropoff_yaw
+
+# Guest information (optional, for logging)
+string guest_room
+string guest_name
+uint8 luggage_count
+
+# Priority: 0=normal, 1=high, 2=urgent
+uint8 priority
+
+---
+# ─── RESULT ──────────────────────────────────────────────────────────────────
+bool success
+string message
+float32 total_distance_m     # total path distance traveled
+float32 total_time_sec       # wall-clock time for the delivery
+uint8 floors_traversed       # number of floor transitions
+string final_floor           # floor the robot ended on
+
+---
+# ─── FEEDBACK ────────────────────────────────────────────────────────────────
+# Current phase of the delivery
+# Phases: IDLE → NAVIGATING_TO_PICKUP → WAITING_FOR_LUGGAGE →
+#         NAVIGATING_TO_ELEVATOR → WAITING_FOR_ELEVATOR → IN_ELEVATOR →
+#         NAVIGATING_TO_DROPOFF → WAITING_FOR_CONFIRMATION → RETURNING
+string phase
+
+string current_floor
+float64 current_x
+float64 current_y
+
+# Distance remaining to next waypoint (m)
+float32 distance_to_next_waypoint
+
+# Persons currently detected nearby (safety info)
+uint32 persons_detected_nearby
+
+# Current elevator status if in elevator phase
+string elevator_status
+
+# Progress percentage [0–100]
+float32 progress_percent
